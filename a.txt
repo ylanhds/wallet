@@ -1,0 +1,40 @@
+作为研究项目的建议
+理解核心概念：
+
+学习 BIP39 标准如何生成助记词
+理解私钥、公钥、地址之间的关系
+掌握椭圆曲线加密的基本原理
+关注安全实现：
+
+观察如何安全地存储加密密钥
+了解敏感信息的加解密过程
+探索扩展方向：
+
+可以尝试添加更多区块链支持
+实现钱包导入/导出功能
+添加交易签名功能
+
+cargo run
+🚀 服务器已启动: http://127.0.0.1:3000
+
+ 生成新钱包
+curl -X POST http://127.0.0.1:3000/wallets
+
+
+ 查询所有钱包
+ curl http://127.0.0.1:3000/wallets
+
+
+查询单个钱包详情
+ curl http://127.0.0.1:3000/wallets/0x21feaa6c3149e9b461148df14b44f1cb0b37996c
+
+
+
+ CREATE TABLE `wallets` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `address` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL,
+  `mnemonic_enc` text COLLATE utf8mb4_bin NOT NULL,
+  `private_key_enc` text COLLATE utf8mb4_bin NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
