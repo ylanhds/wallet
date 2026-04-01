@@ -1,0 +1,11 @@
+{
+  "language": "zh-CN",
+  "chat": {
+    "preferredLanguage": "Chinese (Simplified)",
+    "responseStyle": "professional"
+  },
+  "codeGeneration": {
+    "comments": "chinese",
+    "documentation": "chinese"
+  }
+}

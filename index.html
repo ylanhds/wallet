@@ -1,0 +1,1617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钱包服务 - Wallet Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        /* 🆕 实时价格展示区 */
+        .price-ticker {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .price-ticker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .price-ticker-header h2 {
+            color: #667eea;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .status-dot.connected {
+            background-color: #4CAF50;
+            box-shadow: 0 0 8px #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.disconnected {
+            background-color: #f44336;
+        }
+
+        .status-dot.connecting {
+            background-color: #ff9800;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.4; }
+            100% { opacity: 1; }
+        }
+
+        .price-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .price-card-mini {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s ease;
+        }
+
+        .price-card-mini:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .price-card-mini.eth { border-left-color: #667eea; }
+        .price-card-mini.btc { border-left-color: #f7931a; }
+        .price-card-mini.trx { border-left-color: #ff0000; }
+        .price-card-mini.bnb { border-left-color: #f0b90b; }
+
+        .coin-name {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .coin-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 0.7em;
+        }
+
+        .eth-icon { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .btc-icon { background: linear-gradient(135deg, #f7931a 0%, #ffb347 100%); }
+        .trx-icon { background: linear-gradient(135deg, #ff0000 0%, #cc0000 100%); }
+        .bnb-icon { background: linear-gradient(135deg, #f0b90b 0%, #ffd700 100%); }
+
+        .price-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .price-change {
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .price-change.positive {
+            color: #4CAF50;
+        }
+
+        .price-change.negative {
+            color: #f44336;
+        }
+
+        .price-update-time {
+            font-size: 0.75em;
+            color: #999;
+            text-align: right;
+            margin-top: 5px;
+        }
+
+        .health-status {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.2);
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .stat-card h3 {
+            color: #667eea;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .actions {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 40px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.1em;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-small {
+            padding: 8px 20px;
+            font-size: 0.9em;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .action-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .wallet-list {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .wallet-list h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .wallet-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .wallet-item-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .wallet-item:hover {
+            background: #e9ecef;
+        }
+
+        .wallet-address {
+            font-family: 'Courier New', monospace;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 1.5em;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .info-row {
+            margin-bottom: 15px;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 钱包服务</h1>
+            <p>安全、去中心化的加密货币钱包管理系统</p>
+            <div class="health-status" id="health-status">
+                📡 检查中...
+            </div>
+        </header>
+
+        <!-- 🆕 实时价格展示区 -->
+        <div class="price-ticker">
+            <div class="price-ticker-header">
+                <h2>
+                    <span>💰</span> 实时加密货币价格
+                </h2>
+                <div class="connection-status" id="priceConnectionStatus">
+                    <span class="status-dot connecting"></span>
+                    <span id="priceStatusText">连接中...</span>
+                </div>
+            </div>
+            
+            <div class="price-cards">
+                <!-- ETH -->
+                <div class="price-card-mini eth" id="ethCard">
+                    <div class="coin-name">
+                        <span class="coin-icon eth-icon">E</span>
+                        Ethereum
+                    </div>
+                    <div class="price-value" id="ethPrice">$0.00</div>
+                    <div class="price-change" id="ethChange">--</div>
+                    <div class="price-update-time" id="ethUpdateTime">等待更新...</div>
+                </div>
+
+                <!-- BTC -->
+                <div class="price-card-mini btc" id="btcCard">
+                    <div class="coin-name">
+                        <span class="coin-icon btc-icon">₿</span>
+                        Bitcoin
+                    </div>
+                    <div class="price-value" id="btcPrice">$0.00</div>
+                    <div class="price-change" id="btcChange">--</div>
+                    <div class="price-update-time" id="btcUpdateTime">等待更新...</div>
+                </div>
+
+                <!-- TRX -->
+                <div class="price-card-mini trx" id="trxCard">
+                    <div class="coin-name">
+                        <span class="coin-icon trx-icon">T</span>
+                        TRON
+                    </div>
+                    <div class="price-value" id="trxPrice">$0.0000</div>
+                    <div class="price-change" id="trxChange">--</div>
+                    <div class="price-update-time" id="trxUpdateTime">等待更新...</div>
+                </div>
+
+                <!-- BNB -->
+                <div class="price-card-mini bnb" id="bnbCard">
+                    <div class="coin-name">
+                        <span class="coin-icon bnb-icon">B</span>
+                        BNB
+                    </div>
+                    <div class="price-value" id="bnbPrice">$0.00</div>
+                    <div class="price-change" id="bnbChange">--</div>
+                    <div class="price-update-time" id="bnbUpdateTime">等待更新...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="alert-container"></div>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>总钱包数</h3>
+                <div class="number" id="total-wallets">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>服务状态</h3>
+                <div class="number" style="font-size: 1.5em;" id="service-status">✅ 运行中</div>
+            </div>
+            <div class="stat-card">
+                <h3>数据库</h3>
+                <div class="number" style="font-size: 1.5em;" id="db-status">🟢 已连接</div>
+            </div>
+        </div>
+
+        <!-- 高级功能 -->
+        <div class="actions">
+            <div class="action-group">
+                <button class="btn" onclick="createWallet()" id="create-btn">
+                    ➕ 单个创建
+                </button>
+                <button class="btn btn-success" onclick="batchCreateWallets(5)">
+                    🎯 批量创建 5 个
+                </button>
+                <button class="btn btn-success" onclick="batchCreateWallets(10)">
+                    🎯 批量创建 10 个
+                </button>
+                <button class="btn" onclick="refreshWallets()">
+                    🔄 刷新列表
+                </button>
+            </div>
+            
+            <div class="action-group">
+                <button class="btn btn-warning" onclick="exportWallets()">
+                    📥 导出所有钱包
+                </button>
+                <button class="btn btn-warning" onclick="showImportModal()">
+                    📤 导入助记词
+                </button>
+            </div>
+        </div>
+
+        <!-- 搜索框 -->
+        <div class="search-box">
+            <input type="text" id="search-input" placeholder="🔍 搜索钱包地址...">
+            <button class="btn" onclick="searchWallets()">搜索</button>
+            <button class="btn btn-danger" onclick="clearSearch()">清除</button>
+        </div>
+
+        <!-- 提示信息 -->
+        <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; margin-bottom: 20px; color: white;">
+            💡 提示：列表仅显示最新的 10 个钱包，使用搜索功能查找特定钱包，或导出数据查看全部。
+        </div>
+
+        <!-- 🆕 娱乐功能区 -->
+        <div class="actions">
+            <h2 style="margin-bottom: 20px; color: #667eea;">🎮 娱乐功能</h2>
+            <div class="action-group" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <button class="btn" onclick="showLuckyDraw()" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    🎰 幸运抽奖
+                </button>
+                <button class="btn" onclick="showAchievements()" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                    🏆 成就系统
+                </button>
+                <button class="btn btn-danger" onclick="confirmClearAll()" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+                    🗑️ 一键清空
+                </button>
+            </div>
+        </div>
+
+        <!-- 🔗 区块链工具区 -->
+        <div class="actions">
+            <h2 style="margin-bottom: 20px; color: #667eea;">🔗 区块链工具</h2>
+            <div class="action-group" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                <button class="btn" onclick="generateMultiChain()" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                    🌐 多链地址生成
+                </button>
+                <button class="btn" onclick="showDeriveKeyModal()" style="background: linear-gradient(135deg, #FC4A1A 0%, #F7B733 100%);">
+                    🔑 私钥推导工具
+                </button>
+                <button class="btn" onclick="showVerifyMnemonicModal()" style="background: linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%);">
+                    ✅ 助记词验证
+                </button>
+            </div>
+        </div>
+
+        <div class="wallet-list">
+            <h2>💼 我的钱包</h2>
+            <div id="wallets-container">
+                <p style="text-align: center; color: #999;">加载中...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 钱包详情弹窗 -->
+    <div class="modal" id="wallet-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>钱包详情</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="wallet-details"></div>
+        </div>
+    </div>
+
+    <!-- 导入助记词弹窗 -->
+    <div class="modal" id="import-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📤 导入助记词</h2>
+                <button class="close-btn" onclick="closeImportModal()">&times;</button>
+            </div>
+            <div style="padding: 20px 0;">
+                <p style="margin-bottom: 15px; color: #667eea;">
+                    ⚠️ 注意：请输入有效的 12 个单词的助记词
+                </p>
+                <textarea 
+                    id="import-mnemonic" 
+                    placeholder="请输入 12 个单词的助记词，用空格分隔..."
+                    style="width: 100%; height: 120px; padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1em; font-family: monospace; resize: vertical;"
+                ></textarea>
+                <button 
+                    class="btn" 
+                    onclick="importWallet()" 
+                    style="width: 100%; margin-top: 15px;"
+                    id="import-btn"
+                >
+                    🚀 导入钱包
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🔑 私钥推导弹窗 -->
+    <div class="modal" id="derive-key-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔑 私钥推导工具</h2>
+                <button class="close-btn" onclick="closeDeriveModal()">&times;</button>
+            </div>
+            <div style="padding: 20px 0;">
+                <p style="margin-bottom: 15px; color: #667eea;">
+                    ⚠️ 注意：输入私钥将推导出公钥和地址
+                </p>
+                <input 
+                    type="text" 
+                    id="derive-private-key" 
+                    placeholder="请输入私钥（hex 格式，如 0xabc123...）"
+                    style="width: 100%; padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1em; font-family: monospace;"
+                />
+                <button 
+                    class="btn" 
+                    onclick="deriveKey()" 
+                    style="width: 100%; margin-top: 15px;"
+                    id="derive-btn"
+                >
+                    🔑 推导地址
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ✅ 助记词验证弹窗 -->
+    <div class="modal" id="verify-mnemonic-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✅ 助记词验证</h2>
+                <button class="close-btn" onclick="closeVerifyModal()">&times;</button>
+            </div>
+            <div style="padding: 20px 0;">
+                <p style="margin-bottom: 15px; color: #667eea;">
+                    ⚠️ 注意：验证助记词格式是否正确
+                </p>
+                <textarea 
+                    id="verify-mnemonic-input" 
+                    placeholder="请输入助记词（12/15/18/24 个单词）..."
+                    style="width: 100%; height: 120px; padding: 15px; border: 2px solid #e0e0e0; border-radius: 10px; font-size: 1em; font-family: monospace; resize: vertical;"
+                ></textarea>
+                <button 
+                    class="btn" 
+                    onclick="verifyMnemonic()" 
+                    style="width: 100%; margin-top: 15px;"
+                    id="verify-btn"
+                >
+                    ✅ 验证助记词
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:3000';
+
+        // 🆕 实时价格监控（WebSocket）
+        class PriceMonitor {
+            constructor() {
+                this.ws = null;
+                this.isConnected = false;
+                this.prices = {};
+                
+                this.initializeElements();
+                this.connectWebSocket();
+                setInterval(() => this.updateTime(), 1000);
+            }
+
+            initializeElements() {
+                this.elements = {
+                    statusDot: document.querySelector('#priceConnectionStatus .status-dot'),
+                    statusText: document.getElementById('priceStatusText'),
+                    coins: {
+                        ETH: {
+                            price: document.getElementById('ethPrice'),
+                            change: document.getElementById('ethChange'),
+                            updateTime: document.getElementById('ethUpdateTime')
+                        },
+                        BTC: {
+                            price: document.getElementById('btcPrice'),
+                            change: document.getElementById('btcChange'),
+                            updateTime: document.getElementById('btcUpdateTime')
+                        },
+                        TRX: {
+                            price: document.getElementById('trxPrice'),
+                            change: document.getElementById('trxChange'),
+                            updateTime: document.getElementById('trxUpdateTime')
+                        },
+                        BNB: {
+                            price: document.getElementById('bnbPrice'),
+                            change: document.getElementById('bnbChange'),
+                            updateTime: document.getElementById('bnbUpdateTime')
+                        }
+                    }
+                };
+            }
+
+            updateConnectionStatus(status, text) {
+                this.elements.statusDot.className = `status-dot ${status}`;
+                this.elements.statusText.textContent = text;
+            }
+
+            connectWebSocket() {
+                this.updateConnectionStatus('connecting', '连接中...');
+                
+                try {
+                    const wsUrl = `ws://127.0.0.1:3000/ws`;
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        console.log('✅ WebSocket 已连接');
+                        this.isConnected = true;
+                        this.updateConnectionStatus('connected', '已连接 (WebSocket)');
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        try {
+                            const data = JSON.parse(event.data);
+                            this.handlePriceData(data);
+                        } catch (error) {
+                            console.error('解析消息失败:', error);
+                        }
+                    };
+                    
+                    this.ws.onclose = () => {
+                        console.log('⚠️ WebSocket 断开');
+                        this.isConnected = false;
+                        this.updateConnectionStatus('disconnected', '已断开');
+                        setTimeout(() => this.connectWebSocket(), 5000);
+                    };
+                    
+                    this.ws.onerror = (error) => {
+                        console.error('❌ WebSocket 错误:', error);
+                        this.updateConnectionStatus('error', '连接错误');
+                    };
+                } catch (error) {
+                    console.error('连接失败:', error);
+                    this.updateConnectionStatus('disconnected', '连接失败');
+                }
+            }
+
+            handlePriceData(data) {
+                if (data.symbol && data.price_usd) {
+                    const symbol = data.symbol;
+                    const coin = this.elements.coins[symbol];
+                    
+                    if (coin) {
+                        // 更新价格
+                        const price = data.price_usd;
+                        const decimals = symbol === 'TRX' ? 4 : 2;
+                        coin.price.textContent = `$${price.toLocaleString(undefined, {minimumFractionDigits: decimals, maximumFractionDigits: decimals})}`;
+                        
+                        // 更新涨跌幅
+                        const change = data.change_24h || 0;
+                        const arrow = change >= 0 ? '📈' : '📉';
+                        const sign = change >= 0 ? '+' : '';
+                        coin.change.textContent = `${arrow} ${sign}${change.toFixed(2)}%`;
+                        coin.change.className = `price-change ${change >= 0 ? 'positive' : 'negative'}`;
+                        
+                        // 更新时间
+                        this.updateCoinTime(symbol);
+                    }
+                }
+            }
+
+            updateCoinTime(symbol) {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('zh-CN');
+                this.elements.coins[symbol].updateTime.textContent = `更新于 ${timeStr}`;
+            }
+
+            updateTime() {
+                // 每秒更新所有币种的时间显示
+                Object.keys(this.elements.coins).forEach(symbol => {
+                    if (!this.isConnected) {
+                        const now = new Date();
+                        this.elements.coins[symbol].updateTime.textContent = '等待连接...';
+                    }
+                });
+            }
+        }
+
+        // 初始化价格监控
+        let priceMonitor;
+
+        // 显示提示信息
+        function showAlert(message, type = 'success') {
+            const container = document.getElementById('alert-container');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            container.appendChild(alert);
+            
+            setTimeout(() => {
+                alert.remove();
+            }, 3000);
+        }
+
+        // 创建钱包
+        async function createWallet() {
+            const btn = document.getElementById('create-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 创建中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/wallets`, {
+                    method: 'POST'
+                });
+                
+                if (!response.ok) {
+                    throw new Error('创建失败');
+                }
+
+                const data = await response.json();
+                showAlert(`钱包创建成功！地址：${data.address}`, 'success');
+                
+                // 刷新钱包列表
+                await refreshWallets();
+            } catch (error) {
+                showAlert(`创建失败：${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '➕ 创建新钱包';
+            }
+        }
+
+        // 获取钱包列表
+        async function refreshWallets() {
+            try {
+                const response = await fetch(`${API_BASE}/wallets`);
+                const data = await response.json();
+                
+                // 渲染钱包列表
+                const container = document.getElementById('wallets-container');
+                container.innerHTML = renderWalletList(data.wallets);
+                
+                // 获取真实总数（从统计接口）
+                updateTotalCount();
+            } catch (error) {
+                showAlert(`获取钱包列表失败：${error.message}`, 'error');
+            }
+        }
+
+        // 更新总数量
+        async function updateTotalCount() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                const stats = await response.json();
+                document.getElementById('total-wallets').textContent = stats.total_wallets;
+            } catch (error) {
+                console.error('获取统计信息失败:', error);
+                // 如果统计接口失败，使用列表数量
+            }
+        }
+
+        // 获取钱包详情
+        async function getWalletDetails(address) {
+            try {
+                const response = await fetch(`${API_BASE}/wallets/${address}`);
+                const data = await response.json();
+                
+                const detailsHtml = `
+                    <div class="info-row">
+                        <div class="info-label">地址</div>
+                        <div class="info-value">${data.address}</div>
+                    </div>
+                    <div class="info-row">
+                        <div class="info-label">创建时间</div>
+                        <div class="info-value">${data.created_at}</div>
+                    </div>
+                    ${data.mnemonic ? `
+                        <div class="info-row">
+                            <div class="info-label">助记词（机密！）</div>
+                            <div class="info-value" style="background: #fff3cd;">${data.mnemonic}</div>
+                        </div>
+                    ` : ''}
+                    ${data.private_key ? `
+                        <div class="info-row">
+                            <div class="info-label">私钥（机密！）</div>
+                            <div class="info-value" style="background: #fff3cd;">${data.private_key}</div>
+                        </div>
+                    ` : ''}
+                `;
+                
+                document.getElementById('wallet-details').innerHTML = detailsHtml;
+                document.getElementById('wallet-modal').classList.add('active');
+            } catch (error) {
+                showAlert(`获取钱包详情失败：${error.message}`, 'error');
+            }
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('wallet-modal').classList.remove('active');
+        }
+
+        // 点击弹窗外部关闭
+        document.getElementById('wallet-modal').addEventListener('click', (e) => {
+            if (e.target.id === 'wallet-modal') {
+                closeModal();
+            }
+        });
+
+        // 页面加载时获取钱包列表
+        window.addEventListener('DOMContentLoaded', () => {
+            refreshWallets();
+            checkHealth();
+            
+            // 🆕 初始化实时价格监控
+            priceMonitor = new PriceMonitor();
+        });
+
+        // 健康检查
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                document.getElementById('health-status').innerHTML = `📡 ${data.status === 'healthy' ? '✅ 健康' : '⚠️ 异常'}`;
+                document.getElementById('service-status').textContent = data.status === 'healthy' ? '✅ 运行中' : '⚠️ 异常';
+                document.getElementById('db-status').textContent = data.database === 'connected' ? '🟢 已连接' : '🔴 未连接';
+            } catch (error) {
+                console.error('健康检查失败:', error);
+                document.getElementById('health-status').innerHTML = '📡 ❌ 检查失败';
+            }
+        }
+
+        // 批量创建钱包
+        async function batchCreateWallets(count) {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 创建中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/wallets/batch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ count })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('批量创建失败');
+                }
+
+                const data = await response.json();
+                showAlert(`成功创建 ${data.count} 个钱包！`, 'success');
+                await refreshWallets();
+            } catch (error) {
+                showAlert(`批量创建失败：${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = count === 5 ? '🎯 批量创建 5 个' : '🎯 批量创建 10 个';
+            }
+        }
+
+        // 搜索钱包
+        async function searchWallets() {
+            const query = document.getElementById('search-input').value.trim();
+            
+            try {
+                const response = await fetch(`${API_BASE}/wallets/search?q=${encodeURIComponent(query)}`);
+                const data = await response.json();
+                
+                document.getElementById('total-wallets').textContent = data.count;
+                
+                const container = document.getElementById('wallets-container');
+                if (data.wallets.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #999;">未找到匹配的钱包</p>';
+                } else {
+                    container.innerHTML = renderWalletList(data.wallets);
+                }
+                
+                if (query) {
+                    showAlert(`找到 ${data.count} 个匹配的钱包`, 'success');
+                }
+            } catch (error) {
+                showAlert(`搜索失败：${error.message}`, 'error');
+            }
+        }
+
+        // 清除搜索
+        function clearSearch() {
+            document.getElementById('search-input').value = '';
+            refreshWallets();
+        }
+
+        // 导出钱包
+        async function exportWallets() {
+            try {
+                const response = await fetch(`${API_BASE}/wallets/export`);
+                const data = await response.json();
+                
+                // 下载 JSON 文件
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `wallets_export_${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                showAlert(`成功导出 ${data.total} 个钱包`, 'success');
+            } catch (error) {
+                showAlert(`导出失败：${error.message}`, 'error');
+            }
+        }
+
+        // 显示导入弹窗
+        function showImportModal() {
+            document.getElementById('import-modal').classList.add('active');
+        }
+
+        // 关闭导入弹窗
+        function closeImportModal() {
+            document.getElementById('import-modal').classList.remove('active');
+            document.getElementById('import-mnemonic').value = '';
+        }
+
+        // 导入助记词
+        async function importWallet() {
+            const mnemonic = document.getElementById('import-mnemonic').value.trim();
+            const btn = document.getElementById('import-btn');
+            
+            if (!mnemonic) {
+                showAlert('请输入助记词', 'error');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 导入中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/wallets/import`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mnemonic })
+                });
+                
+                const data = await response.json();
+                showAlert(data.message, data.address ? 'success' : 'error');
+                
+                if (data.address && data.address !== '0xTODO') {
+                    closeImportModal();
+                    await refreshWallets();
+                }
+            } catch (error) {
+                showAlert(`导入失败：${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🚀 导入钱包';
+            }
+        }
+
+        // 删除钱包
+        async function deleteWallet(address, event) {
+            event.stopPropagation();
+            
+            if (!confirm(`确定要删除钱包 ${address} 吗？\n此操作不可逆！`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/wallets/${address}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showAlert('钱包已删除', 'success');
+                    await refreshWallets();
+                } else {
+                    showAlert(data.message || '删除失败', 'error');
+                }
+            } catch (error) {
+                showAlert(`删除失败：${error.message}`, 'error');
+            }
+        }
+
+        // 渲染钱包列表（带删除按钮和更多操作）
+        function renderWalletList(wallets) {
+            if (wallets.length === 0) {
+                return '<p style="text-align: center; color: #999;">暂无钱包</p>';
+            }
+            
+            return wallets.map(addr => `
+                <div class="wallet-item" onclick="getWalletDetails('${addr}')">
+                    <span class="wallet-address">${addr}</span>
+                    <div class="wallet-item-actions">
+                        <span style="color: #667eea;">👁️ 查看</span>
+                        <button 
+                            onclick="viewBalance('${addr}', event)" 
+                            style="background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 5px;"
+                            title="查看余额"
+                        >
+                            💰
+                        </button>
+                        <button 
+                            onclick="viewTransactions('${addr}', event)" 
+                            style="background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 5px;"
+                            title="查看交易记录"
+                        >
+                            📜
+                        </button>
+                        <button 
+                            onclick="addTags('${addr}', event)" 
+                            style="background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 5px;"
+                            title="添加标签"
+                        >
+                            🏷️
+                        </button>
+                        <button 
+                            onclick="viewTheme('${addr}', event)" 
+                            style="background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 5px;"
+                            title="查看主题"
+                        >
+                            🎨
+                        </button>
+                        <button 
+                            onclick="viewFortune('${addr}', event)" 
+                            style="background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 5px;"
+                            title="查看运势"
+                        >
+                            🔮
+                        </button>
+                        <button 
+                            onclick="deleteWallet('${addr}', event)" 
+                            style="background: none; border: none; cursor: pointer; font-size: 1.2em; padding: 5px;"
+                            title="删除钱包"
+                        >
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 🆕🆕🆕 新增娱乐功能 🆕🆕🆕
+
+        // 🎰 幸运抽奖
+        async function showLuckyDraw() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 抽奖中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/lucky-draw`);
+                const result = await response.json();
+
+                let emoji = result.is_lucky ? '🎉' : '💪';
+                let color = result.is_lucky ? '#4CAF50' : '#999';
+
+                alert(
+                    `${emoji} ${result.message}\n\n` +
+                    `地址：${result.address}\n` +
+                    `幸运度：${result.lucky_factor}\n` +
+                    (result.mnemonic ? `\n助记词：${result.mnemonic}` : '')
+                );
+            } catch (error) {
+                showAlert(`抽奖失败：${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🎰 幸运抽奖';
+            }
+        }
+
+        // 🏆 成就系统
+        async function showAchievements() {
+            try {
+                const response = await fetch(`${API_BASE}/achievements`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    showAlert('获取成就失败', 'error');
+                    return;
+                }
+
+                let message = `🏆 成就进度：${data.progress}\n\n`;
+                
+                data.achievements.forEach(ach => {
+                    const icon = ach.unlocked ? '✅' : '🔒';
+                    const status = ach.unlocked ? `(已解锁)` : '(未解锁)';
+                    message += `${icon} ${ach.name} - ${ach.description} ${status}\n`;
+                });
+
+                alert(message);
+            } catch (error) {
+                showAlert(`获取成就失败：${error.message}`, 'error');
+            }
+        }
+
+        // 💰 查看余额（添加到钱包详情）
+        async function viewBalance(address) {
+            event.stopPropagation();
+            
+            try {
+                const response = await fetch(`${API_BASE}/wallets/${address}/balance`);
+                const balance = await response.json();
+
+                alert(
+                    `💰 钱包余额\n\n` +
+                    `地址：${balance.address}\n` +
+                    `ETH: ${balance.eth_balance}\n` +
+                    `USD: ${balance.usd_value}\n` +
+                    `更新时间：${balance.last_updated}\n\n` +
+                    `⚠️ 注：这是模拟数据，仅供娱乐`
+                );
+            } catch (error) {
+                showAlert(`查询余额失败：${error.message}`, 'error');
+            }
+        }
+
+        // 📜 查看交易记录
+        async function viewTransactions(address) {
+            event.stopPropagation();
+            
+            try {
+                const response = await fetch(`${API_BASE}/wallets/${address}/transactions`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    showAlert('获取交易记录失败', 'error');
+                    return;
+                }
+
+                let message = `📜 交易记录（共 ${data.total_count} 条）\n\n`;
+                
+                data.transactions.slice(0, 5).forEach((tx, i) => {
+                    const typeEmoji = tx.type === 'receive' ? '💰' : '💸';
+                    message += `${i+1}. ${typeEmoji} ${tx.amount} ${tx.type.toUpperCase()}\n`;
+                    message += `   时间：${tx.timestamp.split(' ')[0]}\n`;
+                });
+
+                if (data.total_count > 5) {
+                    message += `\n... 还有 ${data.total_count - 5} 条记录`;
+                }
+
+                message += `\n\n⚠️ 注：这是生成的假数据，仅供娱乐`;
+
+                alert(message);
+            } catch (error) {
+                showAlert(`获取交易记录失败：${error.message}`, 'error');
+            }
+        }
+
+        // 🎯 添加标签
+        async function addTags(address) {
+            event.stopPropagation();
+            
+            const tagsInput = prompt('请输入标签，用逗号分隔（例如：常用，投资，重要）:');
+            if (!tagsInput || !tagsInput.trim()) return;
+
+            const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t);
+            
+            try {
+                const response = await fetch(`${API_BASE}/wallets/${address}/tags`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tags })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(`✅ 标签添加成功：${tags.join(', ')}`, 'success');
+                } else {
+                    showAlert(result.message || '添加标签失败', 'error');
+                }
+            } catch (error) {
+                showAlert(`添加标签失败：${error.message}`, 'error');
+            }
+        }
+
+        // 🗑️ 一键清空所有数据
+        async function confirmClearAll() {
+            const confirmed = confirm(
+                '⚠️ 警告：此操作将删除数据库中 ALL 钱包数据！\n\n' +
+                '一旦删除，无法恢复！\n\n' +
+                '你确定要继续吗？'
+            );
+            
+            if (!confirmed) return;
+
+            const sureConfirmed = confirm(
+                '⚠️ 二次确认：你真的确定要清空所有数据吗？\n\n' +
+                '点击“确定”执行删除\n' +
+                '点击“取消”放弃操作'
+            );
+
+            if (!sureConfirmed) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/admin/clear-all?confirm=YES_I_AM_SURE`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlert(`✅ ${result.message}`, 'success');
+                    await refreshWallets();
+                } else {
+                    showAlert(result.message || '清空失败', 'error');
+                }
+            } catch (error) {
+                showAlert(`清空失败：${error.message}`, 'error');
+            }
+        }
+
+        // 🎨 查看钱包主题
+        async function viewTheme(address) {
+            event.stopPropagation();
+            
+            try {
+                const response = await fetch(`${API_BASE}/wallets/${address}/theme`);
+                const theme = await response.json();
+
+                alert(
+                    `🎨 钱包主题\n\n` +
+                    `地址：${theme.address}\n` +
+                    `颜色：${theme.color}\n` +
+                    `渐变：${theme.gradient}\n` +
+                    `Emoji: ${theme.emoji}\n` +
+                    `性格：${theme.personality}\n\n` +
+                    `每个钱包都有独特的主题哦！`
+                );
+            } catch (error) {
+                showAlert(`查看主题失败：${error.message}`, 'error');
+            }
+        }
+
+        // 🔮 查看今日运势
+        async function viewFortune(address) {
+            event.stopPropagation();
+            
+            try {
+                const response = await fetch(`${API_BASE}/wallets/${address}/fortune`);
+                const fortune = await response.json();
+
+                let stars = '⭐'.repeat(Math.floor(fortune.luck_score / 20));
+                
+                alert(
+                    `🔮 ${fortune.date} 运势\n\n` +
+                    `地址：${fortune.address}\n` +
+                    `总体：${fortune.overall} ${stars}\n` +
+                    `评分：${fortune.luck_score}/100\n` +
+                    `财运：${fortune.wealth}\n` +
+                    `建议：${fortune.advice}\n` +
+                    `幸运数字：${fortune.lucky_number}\n` +
+                    `幸运色：${fortune.lucky_color}\n\n` +
+                    `⚠️ 注：仅供娱乐，不要当真`
+                );
+            } catch (error) {
+                showAlert(`查看运势失败：${error.message}`, 'error');
+            }
+        }
+
+        // 🔗 区块链工具功能
+
+        // 🌐 生成多链地址
+        async function generateMultiChain() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 生成中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/tools/multi-chain`, {
+                    method: 'POST'
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    let message = `🌐 多链地址生成成功！\n\n`;
+                    message += `助记词：${result.mnemonic}\n\n`;
+                    message += `以太坊：${result.addresses.ethereum}\n`;
+                    message += `比特币：${result.addresses.bitcoin}\n`;
+                    message += `TRON: ${result.addresses.tron}\n`;
+                    message += `BSC: ${result.addresses.binance_smart_chain}\n\n`;
+                    message += `✅ 已保存以太坊地址到数据库`;
+
+                    alert(message);
+                } else {
+                    showAlert(result.message || '生成失败', 'error');
+                }
+            } catch (error) {
+                showAlert(`生成失败：${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🌐 多链地址生成';
+            }
+        }
+
+        // 🔑 私钥推导工具 - 显示弹窗
+        function showDeriveKeyModal() {
+            document.getElementById('derive-key-modal').classList.add('active');
+        }
+
+        function closeDeriveModal() {
+            document.getElementById('derive-key-modal').classList.remove('active');
+            document.getElementById('derive-private-key').value = '';
+        }
+
+        // 🔑 私钥推导
+        async function deriveKey() {
+            const privateKey = document.getElementById('derive-private-key').value.trim();
+            
+            if (!privateKey) {
+                showAlert('请输入私钥', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('derive-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 推导中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/tools/derive-key`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mnemonic: privateKey })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    let message = `🔑 私钥推导成功！\n\n`;
+                    message += `私钥：${result.private_key}\n\n`;
+                    message += `公钥：${result.public_key}\n\n`;
+                    message += `地址：${result.address}\n\n`;
+                    message += `⚠️ 注意：请妥善保管私钥，不要泄露！`;
+
+                    alert(message);
+                    closeDeriveModal();
+                } else {
+                    showAlert(result.message || '推导失败', 'error');
+                }
+            } catch (error) {
+                showAlert(`推导失败：${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔑 推导地址';
+            }
+        }
+
+        // ✅ 助记词验证 - 显示弹窗
+        function showVerifyMnemonicModal() {
+            document.getElementById('verify-mnemonic-modal').classList.add('active');
+        }
+
+        function closeVerifyModal() {
+            document.getElementById('verify-mnemonic-modal').classList.remove('active');
+            document.getElementById('verify-mnemonic-input').value = '';
+        }
+
+        // ✅ 验证助记词
+        async function verifyMnemonic() {
+            const mnemonic = document.getElementById('verify-mnemonic-input').value.trim();
+            
+            if (!mnemonic) {
+                showAlert('请输入助记词', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('verify-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 验证中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/tools/verify-mnemonic`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mnemonic: mnemonic })
+                });
+                const result = await response.json();
+
+                if (result.valid) {
+                    showAlert(
+                        `✅ 验证通过！\n\n` +
+                        `单词数：${result.word_count}\n` +
+                        `状态：格式正确\n` +
+                        `说明：${result.note}`,
+                        'success'
+                    );
+                    closeVerifyModal();
+                } else {
+                    showAlert(result.message || '验证失败', 'error');
+                }
+            } catch (error) {
+                showAlert(`验证失败：${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '✅ 验证助记词';
+            }
+        }
+
+        // 💰 市场数据功能
+
+        // 💹 显示实时币价
+        async function showCryptoPrices() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 获取中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/market/prices`);
+                const data = await response.json();
+
+                if (data.success) {
+                    let message = `💹 实时加密货币价格\n\n`;
+                    message += `数据来源：${data.source}\n`;
+                    message += `${data.note}\n\n`;
+                    
+                    if (data.prices.ETH) {
+                        const change = data.prices.ETH.change_24h.toFixed(2);
+                        const arrow = change >= 0 ? '📈' : '📉';
+                        message += `${arrow} ETH: $${data.prices.ETH.price_usd.toLocaleString()} (${change}%)\n`;
+                    }
+                    if (data.prices.BTC) {
+                        const change = data.prices.BTC.change_24h.toFixed(2);
+                        const arrow = change >= 0 ? '📈' : '📉';
+                        message += `${arrow} BTC: $${data.prices.BTC.price_usd.toLocaleString()} (${change}%)\n`;
+                    }
+                    if (data.prices.TRX) {
+                        const change = data.prices.TRX.change_24h.toFixed(2);
+                        const arrow = change >= 0 ? '📈' : '📉';
+                        message += `${arrow} TRX: $${data.prices.TRX.price_usd.toFixed(4)} (${change}%)\n`;
+                    }
+                    if (data.prices.BNB) {
+                        const change = data.prices.BNB.change_24h.toFixed(2);
+                        const arrow = change >= 0 ? '📈' : '📉';
+                        message += `${arrow} BNB: $${data.prices.BNB.price_usd.toLocaleString()} (${change}%)\n`;
+                    }
+
+                    alert(message);
+                } else {
+                    showAlert(data.message || '获取价格失败', 'error');
+                }
+            } catch (error) {
+                showAlert(`获取价格失败：${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '💹 实时币价';
+            }
+        }
+
+        // 📈 显示市场趋势
+        async function showMarketTrends() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span> 获取中...';
+
+            try {
+                const response = await fetch(`${API_BASE}/market/trends`);
+                const data = await response.json();
+
+                if (data.success) {
+                    let message = `📈 市场趋势 - ${data.source}\n\n`;
+                    
+                    data.trends.forEach((coin, i) => {
+                        const rank = coin.current_price < 1 ? 
+                            `$${coin.current_price.toFixed(6)}` : 
+                            `$${coin.current_price.toLocaleString()}`;
+                        const change = coin.price_change_percentage_24h.toFixed(2);
+                        const emoji = change >= 0 ? '📈' : '📉';
+                        
+                        message += `${i+1}. ${coin.name} (${coin.symbol.toUpperCase()})\n`;
+                        message += `   ${rank} ${emoji} ${change}%\n`;
+                        message += `   市值：$${(coin.market_cap / 1e9).toFixed(2)}B\n\n`;
+                    });
+
+                    alert(message);
+                } else {
+                    showAlert('获取市场趋势失败', 'error');
+                }
+            } catch (error) {
+                showAlert(`获取市场趋势失败：${error.message}`, 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '📈 市场趋势';
+            }
+        }
+
+    </script>
+</body>
+</html>
