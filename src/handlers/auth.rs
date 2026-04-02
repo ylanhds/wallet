@@ -3,7 +3,6 @@
 // ============================================
 
 use axum::{Json, extract::State};
-use sqlx::Row;
 use std::sync::Arc;
 use crate::config::AppState;
 use crate::models::{RegisterRequest, LoginRequest, Claims};
