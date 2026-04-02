@@ -17,6 +17,10 @@ use rand::{Rng, RngCore};
 use dotenvy::dotenv;
 use std::{env, sync::Arc};
 
+// 🔐 用户认证相关（新增）
+use jsonwebtoken::{encode, decode, Header, Validation, EncodingKey, DecodingKey};
+use chrono::{Duration as ChronoDuration, Utc};
+
 // WebSocket 相关
 use futures_util::{stream::{SplitSink, StreamExt}, SinkExt};
 use tokio::sync::broadcast;
@@ -30,6 +34,7 @@ struct AppState {
     enc_key: [u8; 32],
     is_dev: bool,
     ws_tx: broadcast::Sender<String>,  // WebSocket 广播发送器
+    jwt_secret: String,  // 🔐 JWT 密钥（新增）
 }
 
 // ==== 核心业务逻辑 ====
@@ -103,7 +108,7 @@ async fn save_wallet(
     private_key_enc: &str,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        "INSERT INTO wallets (address, mnemonic_enc, private_key_enc) VALUES (?, ?, ?)",
+        "INSERT INTO ws_wallets (address, mnemonic_enc, private_key_enc) VALUES (?, ?, ?)",
         address,
         mnemonic_enc,
         private_key_enc
@@ -215,6 +220,43 @@ struct MnemonicOnlyResponse {
 #[derive(Deserialize)]
 struct PrivateKeyRequest {
     private_key: String,
+}
+
+// 🔐 用户认证相关结构体（新增）
+#[derive(Debug, Serialize, Deserialize)]
+struct RegisterRequest {
+    username: String,
+    email: String,
+    password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct LoginRequest {
+    username: String,
+    password: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct AuthResponse {
+    token: String,
+    refresh_token: String,
+    user: UserInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+struct UserInfo {
+    id: i32,
+    username: String,
+    email: String,
+    avatar_url: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Claims {
+    sub: i32,  // 用户 ID
+    username: String,
+    exp: usize,  // 过期时间
+    iat: usize,  // 签发时间
 }
 
 #[derive(Deserialize)]
@@ -423,7 +465,7 @@ async fn create_wallet(State(app): State<Arc<AppState>>) -> Json<WalletResponse>
 /// 获取所有钱包列表（仅显示前 10 个）
 async fn list_wallets(State(app): State<Arc<AppState>>) -> Json<WalletListResponse> {
     // 默认只显示最新的 10 个钱包
-    let records = sqlx::query("SELECT address FROM wallets ORDER BY id DESC LIMIT 10")
+    let records = sqlx::query("SELECT address FROM ws_wallets ORDER BY id DESC LIMIT 10")
         .fetch_all(&app.db)
         .await
         .unwrap_or_default();
@@ -491,7 +533,7 @@ async fn delete_wallet(
     State(app): State<Arc<AppState>>,
     Path(address): Path<String>,
 ) -> Json<serde_json::Value> {
-    match sqlx::query("DELETE FROM wallets WHERE address = ?")
+    match sqlx::query("DELETE FROM ws_wallets WHERE address = ?")
         .bind(&address)
         .execute(&app.db)
         .await
@@ -536,7 +578,7 @@ async fn search_wallets(
     
     // 只显示前 10 个匹配结果
     let records = sqlx::query(
-        "SELECT address FROM wallets WHERE address LIKE ? ORDER BY id DESC LIMIT 10"
+        "SELECT address FROM ws_wallets WHERE address LIKE ? ORDER BY id DESC LIMIT 10"
     )
     .bind(format!("%{}%", query))
     .fetch_all(&app.db)
@@ -558,7 +600,7 @@ async fn search_wallets(
 /// 导出所有钱包为 JSON
 async fn export_wallets(State(app): State<Arc<AppState>>) -> Json<serde_json::Value> {
     let records = sqlx::query(
-        "SELECT address, mnemonic_enc, private_key_enc, created_at FROM wallets ORDER BY id DESC"
+        "SELECT address, mnemonic_enc, private_key_enc, created_at FROM ws_wallets ORDER BY id DESC"
     )
     .fetch_all(&app.db)
     .await
@@ -710,14 +752,14 @@ async fn health_check(State(app): State<Arc<AppState>>) -> Json<HealthResponse> 
 /// 获取统计信息
 async fn get_stats(State(app): State<Arc<AppState>>) -> Json<StatsResponse> {
     // 获取总数
-    let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM wallets")
+    let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM ws_wallets")
         .fetch_one(&app.db)
         .await
         .unwrap_or(0) as usize;
 
     // 获取今天的数量
     let today = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM wallets WHERE DATE(created_at) = CURDATE()"
+        "SELECT COUNT(*) FROM ws_wallets WHERE DATE(created_at) = CURDATE()"
     )
     .fetch_one(&app.db)
     .await
@@ -725,7 +767,7 @@ async fn get_stats(State(app): State<Arc<AppState>>) -> Json<StatsResponse> {
 
     // 获取本周的数量
     let this_week = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM wallets WHERE YEARWEEK(created_at) = YEARWEEK(NOW())"
+        "SELECT COUNT(*) FROM ws_wallets WHERE YEARWEEK(created_at) = YEARWEEK(NOW())"
     )
     .fetch_one(&app.db)
     .await
@@ -733,7 +775,7 @@ async fn get_stats(State(app): State<Arc<AppState>>) -> Json<StatsResponse> {
 
     // 获取第一个和最后一个钱包的时间
     let first = sqlx::query_scalar::<_, chrono::DateTime<chrono::Utc>>(
-        "SELECT created_at FROM wallets ORDER BY id ASC LIMIT 1"
+        "SELECT created_at FROM ws_wallets ORDER BY id ASC LIMIT 1"
     )
     .fetch_optional(&app.db)
     .await
@@ -741,7 +783,7 @@ async fn get_stats(State(app): State<Arc<AppState>>) -> Json<StatsResponse> {
     .flatten();
 
     let last = sqlx::query_scalar::<_, chrono::DateTime<chrono::Utc>>(
-        "SELECT created_at FROM wallets ORDER BY id DESC LIMIT 1"
+        "SELECT created_at FROM ws_wallets ORDER BY id DESC LIMIT 1"
     )
     .fetch_optional(&app.db)
     .await
@@ -774,7 +816,7 @@ async fn get_recent_activity(
     let limit = params["limit"].as_u64().unwrap_or(10) as usize;
     
     let records = sqlx::query(
-        "SELECT address, created_at FROM wallets ORDER BY id DESC LIMIT ?"
+        "SELECT address, created_at FROM ws_wallets ORDER BY id DESC LIMIT ?"
     )
     .bind(limit as i64)
     .fetch_all(&app.db)
@@ -891,7 +933,7 @@ async fn batch_delete_wallets(
     let mut not_found = 0;
 
     for address in &req.addresses {
-        match sqlx::query("DELETE FROM wallets WHERE address = ?")
+        match sqlx::query("DELETE FROM ws_wallets WHERE address = ?")
             .bind(address)
             .execute(&app.db)
             .await
@@ -918,7 +960,7 @@ async fn batch_delete_wallets(
 /// 随机选择一个钱包（简化版）
 async fn get_random_wallet(State(app): State<Arc<AppState>>) -> Json<serde_json::Value> {
     // 获取所有钱包
-    let all_addresses = sqlx::query("SELECT address FROM wallets ORDER BY RAND() LIMIT 1")
+    let all_addresses = sqlx::query("SELECT address FROM ws_wallets ORDER BY RAND() LIMIT 1")
         .fetch_all(&app.db)
         .await
         .unwrap_or_default();
@@ -948,7 +990,7 @@ async fn get_wallet(
     Path(address): Path<String>,
 ) -> Json<WalletDetailResponse> {
     let record_result = sqlx::query(
-        "SELECT address, mnemonic_enc, private_key_enc, created_at FROM wallets WHERE address = ?",
+        "SELECT address, mnemonic_enc, private_key_enc, created_at FROM ws_wallets WHERE address = ?",
     )
     .bind(&address)
     .fetch_optional(&app.db)
@@ -1013,6 +1055,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let db_url = env::var("DATABASE_URL")?;
     let enc_key = env::var("ENCRYPTION_KEY")?;
+    let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| "your-secret-key-change-in-production".to_string());
     let env_type = env::var("ENVIRONMENT").unwrap_or_else(|_| "prod".to_string());
     let is_dev = env_type == "dev";
 
@@ -1031,6 +1074,7 @@ async fn main() -> Result<(), anyhow::Error> {
         enc_key: key_bytes,
         is_dev,
         ws_tx,
+        jwt_secret,
     });
 
     // 启动 WebSocket 后台任务，连接到 CryptoCompare
@@ -1082,6 +1126,10 @@ async fn main() -> Result<(), anyhow::Error> {
         .route("/market/trends", get(get_market_trends))  // 📈 市场趋势
         .route("/portfolio/{address}", get(calculate_portfolio_value))  // 💼 组合价值
         .route("/alerts/price", post(set_price_alert))  // ⏰ 价格提醒
+        // 🔐 用户认证功能（新增）
+        .route("/auth/register", post(register))  // 用户注册
+        .route("/auth/login", post(login))  // 用户登录
+        .route("/auth/me", get(get_current_user))  // 获取当前用户信息
         .with_state(app_state);
 
     println!("🚀 服务器启动在 http://127.0.0.1:3000");
@@ -1104,7 +1152,7 @@ async fn add_wallet_tags(
     Json(req): Json<TagRequest>,
 ) -> Json<serde_json::Value> {
     // 验证地址是否存在
-    let exists = sqlx::query("SELECT 1 FROM wallets WHERE address = ?")
+    let exists = sqlx::query("SELECT 1 FROM ws_wallets WHERE address = ?")
         .bind(&address)
         .fetch_optional(&app.db)
         .await
@@ -1148,7 +1196,7 @@ async fn get_wallet_tags(
     State(app): State<Arc<AppState>>,
     Path(address): Path<String>,
 ) -> Json<serde_json::Value> {
-    let record = sqlx::query("SELECT tags, label FROM wallets WHERE address = ?")
+    let record = sqlx::query("SELECT tags, label FROM ws_wallets WHERE address = ?")
         .bind(&address)
         .fetch_optional(&app.db)
         .await
@@ -1203,7 +1251,7 @@ async fn generate_fake_transactions(
     Path(address): Path<String>,
 ) -> Json<serde_json::Value> {
     // 检查钱包是否存在
-    let exists = sqlx::query("SELECT 1 FROM wallets WHERE address = ?")
+    let exists = sqlx::query("SELECT 1 FROM ws_wallets WHERE address = ?")
         .bind(&address)
         .fetch_optional(&app.db)
         .await
@@ -1304,14 +1352,14 @@ async fn lucky_draw(State(app): State<Arc<AppState>>) -> Json<LuckyDrawResult> {
 /// 🏆 成就系统 - 查看已解锁的成就
 async fn get_achievements(State(app): State<Arc<AppState>>) -> Json<serde_json::Value> {
     // 获取钱包总数
-    let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM wallets")
+    let total = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM ws_wallets")
         .fetch_one(&app.db)
         .await
         .unwrap_or(0) as usize;
     
     // 获取今天创建的数量
     let today = sqlx::query_scalar::<_, i64>(
-        "SELECT COUNT(*) FROM wallets WHERE DATE(created_at) = CURDATE()"
+        "SELECT COUNT(*) FROM ws_wallets WHERE DATE(created_at) = CURDATE()"
     )
     .fetch_one(&app.db)
     .await
@@ -1382,13 +1430,13 @@ async fn clear_all_data(
     }
     
     // 获取删除前的数量
-    let count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM wallets")
+    let count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM ws_wallets")
         .fetch_one(&app.db)
         .await
         .unwrap_or(0);
     
     // 删除所有数据
-    match sqlx::query("DELETE FROM wallets").execute(&app.db).await {
+    match sqlx::query("DELETE FROM ws_wallets").execute(&app.db).await {
         Ok(result) => {
             Json(serde_json::json!({
                 "success": true,
@@ -2316,4 +2364,225 @@ async fn set_price_alert(
                            target_price),
         "note": "提醒功能需要后台服务支持，此为演示版本"
     }))
+}
+
+// ============================================
+// 🔐 用户认证相关 API（新增）
+// ============================================
+
+/// 生成 JWT 令牌
+fn generate_jwt(user_id: i32, username: &str, secret: &str) -> Result<String, jsonwebtoken::errors::Error> {
+    let expiration = Utc::now()
+        .checked_add_signed(ChronoDuration::hours(24))
+        .unwrap()
+        .timestamp() as usize;
+
+    let claims = Claims {
+        sub: user_id,
+        username: username.to_string(),
+        exp: expiration,
+        iat: Utc::now().timestamp() as usize,
+    };
+
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(secret.as_bytes()),
+    )
+}
+
+/// 验证 JWT 令牌
+fn verify_jwt(token: &str, secret: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
+    decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &Validation::default(),
+    )
+    .map(|data| data.claims)
+}
+
+/// 用户注册
+async fn register(
+    State(app): State<Arc<AppState>>,
+    Json(req): Json<RegisterRequest>,
+) -> Json<serde_json::Value> {
+    // 验证输入
+    if req.username.is_empty() || req.email.is_empty() || req.password.is_empty() {
+        return Json(serde_json::json!({
+            "success": false,
+            "message": "用户名、邮箱和密码不能为空"
+        }));
+    }
+
+    // 检查用户名或邮箱是否已存在
+    let exists = sqlx::query_scalar::<_, i64>(
+        "SELECT COUNT(*) FROM ws_users WHERE username = ? OR email = ?"
+    )
+    .bind(&req.username)
+    .bind(&req.email)
+    .fetch_one(&app.db)
+    .await
+    .unwrap_or(0);
+
+    if exists > 0 {
+        return Json(serde_json::json!({
+            "success": false,
+            "message": "用户名或邮箱已被使用"
+        }));
+    }
+
+    // 密码加密
+    let password_hash = bcrypt::hash(&req.password, 12).unwrap();
+
+    // 插入数据库
+    match sqlx::query(
+        "INSERT INTO ws_users (username, email, password_hash) VALUES (?, ?, ?)"
+    )
+    .bind(&req.username)
+    .bind(&req.email)
+    .bind(&password_hash)
+    .execute(&app.db)
+    .await
+    {
+        Ok(result) => {
+            let user_id = result.last_insert_id() as i32;
+            
+            // 生成 JWT 令牌
+            let token = generate_jwt(user_id, &req.username, &app.jwt_secret).unwrap();
+            let refresh_token = uuid::Uuid::new_v4().to_string();
+
+            Json(serde_json::json!({
+                "success": true,
+                "message": "注册成功",
+                "user": {
+                    "id": user_id,
+                    "username": req.username,
+                    "email": req.email
+                },
+                "token": token,
+                "refresh_token": refresh_token
+            }))
+        }
+        Err(e) => {
+            eprintln!("注册失败：{}", e);
+            Json(serde_json::json!({
+                "success": false,
+                "message": "注册失败"
+            }))
+        }
+    }
+}
+
+/// 用户登录
+async fn login(
+    State(app): State<Arc<AppState>>,
+    Json(req): Json<LoginRequest>,
+) -> Json<serde_json::Value> {
+    // 查询用户
+    let user = sqlx::query_as::<_, (i32, String, String, Option<String>)>(
+        "SELECT id, username, password_hash, avatar_url FROM ws_users WHERE username = ?"
+    )
+    .bind(&req.username)
+    .fetch_optional(&app.db)
+    .await
+    .ok()
+    .flatten();
+
+    match user {
+        Some((user_id, username, password_hash, avatar_url)) => {
+            // 验证密码
+            if bcrypt::verify(&req.password, &password_hash).unwrap_or(false) {
+                // 更新最后登录时间
+                let _ = sqlx::query("UPDATE users SET last_login = NOW() WHERE id = ?")
+                    .bind(user_id)
+                    .execute(&app.db)
+                    .await;
+
+                // 生成 JWT 令牌
+                let token = generate_jwt(user_id, &username, &app.jwt_secret).unwrap();
+                let refresh_token = uuid::Uuid::new_v4().to_string();
+
+                Json(serde_json::json!({
+                    "success": true,
+                    "message": "登录成功",
+                    "user": {
+                        "id": user_id,
+                        "username": username,
+                        "email": "",
+                        "avatar_url": avatar_url
+                    },
+                    "token": token,
+                    "refresh_token": refresh_token
+                }))
+            } else {
+                Json(serde_json::json!({
+                    "success": false,
+                    "message": "用户名或密码错误"
+                }))
+            }
+        }
+        None => Json(serde_json::json!({
+            "success": false,
+            "message": "用户名或密码错误"
+        })),
+    }
+}
+
+/// 获取当前用户信息
+async fn get_current_user(
+    State(app): State<Arc<AppState>>,
+    headers: axum::http::HeaderMap,
+) -> Json<serde_json::Value> {
+    // 从 Authorization header 中提取 token
+    if let Some(auth_header) = headers.get("Authorization") {
+        if let Ok(auth_str) = auth_header.to_str() {
+            let token = auth_str.trim_start_matches("Bearer ");
+            
+            match verify_jwt(token, &app.jwt_secret) {
+                Ok(claims) => {
+                    // 查询用户信息
+                    let user = sqlx::query_as::<_, (i32, String, String, Option<String>)>(
+                        "SELECT id, username, email, avatar_url FROM ws_users WHERE id = ?"
+                    )
+                    .bind(claims.sub)
+                    .fetch_optional(&app.db)
+                    .await
+                    .ok()
+                    .flatten();
+
+                    match user {
+                        Some((id, username, email, avatar_url)) => {
+                            Json(serde_json::json!({
+                                "success": true,
+                                "user": {
+                                    "id": id,
+                                    "username": username,
+                                    "email": email,
+                                    "avatar_url": avatar_url
+                                }
+                            }))
+                        }
+                        None => Json(serde_json::json!({
+                            "success": false,
+                            "message": "用户不存在"
+                        })),
+                    }
+                }
+                Err(_) => Json(serde_json::json!({
+                    "success": false,
+                    "message": "无效的令牌"
+                })),
+            }
+        } else {
+            Json(serde_json::json!({
+                "success": false,
+                "message": "无效的 Authorization header"
+            }))
+        }
+    } else {
+        Json(serde_json::json!({
+            "success": false,
+            "message": "缺少 Authorization header"
+        }))
+    }
 }

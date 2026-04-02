@@ -1,128 +1,118 @@
-# 🚀 钱包服务 - 完整功能版
+# 🚀 钱包服务
 
-一个功能丰富的加密货币钱包管理系统，配备现代化的 Web 界面和实时价格监控。
+一个功能丰富的加密货币钱包管理系统，配备实时价格监控和 Web 界面。
 
-**⚠️ 重要提示**：这是一个测试/娱乐项目，所有余额和交易数据都是模拟的，仅供学习和娱乐！
+**⚠️ 重要提示**：这是测试项目，所有余额和交易都是模拟的，仅供学习娱乐！
 
 ---
 
-## ✨ 功能特性
+## 📚 文档导航
 
-### 🔐 核心功能
-- **生成安全的钱包**：BIP39 助记词 + secp256k1 加密
-- **AES-GCM 加密存储**：保护敏感数据
-- **以太坊地址生成**：Keccak256 哈希算法
-- **MySQL 数据库持久化**：安全可靠的数据存储
+### 🎯 核心文档（必读）
+1. **[快速开始指南](QUICK_START.md)** - 5 分钟上手教程
+2. **[代码学习指南](CODE_EXPLANATION.md)** - 详细代码注释和原理解析
+3. **[本文档](README.md)** - 项目概览和功能介绍
 
-### 💰 实时价格监控（新！）
-- **WebSocket 实时推送** - 连接 CryptoCompare，毫秒级更新
-- **多币种价格** - ETH、BTC、TRX、BNB 实时展示
-- **首页集成** - 打开页面即可看到价格跳动
-- **自动重连** - 网络断开后自动恢复
+### 💡 学习建议
+- **新手**：先看 [QUICK_START.md](QUICK_START.md) → 运行项目体验功能
+- **学习代码**：看 [CODE_EXPLANATION.md](CODE_EXPLANATION.md) → 理解实现原理
+- **查阅功能**：继续阅读本文档 → 了解 API 和使用方法
+
+---
+
+## ✨ 核心功能
+
+### 🔐 钱包管理
+- 生成安全的钱包（BIP39 助记词 + secp256k1 加密）
+- AES-GCM 加密存储
+- 批量创建/导入导出
+- MySQL 持久化
+
+### 💰 实时价格监控
+- WebSocket 实时推送（CryptoCompare）
+- ETH、BTC、TRX、BNB 多币种展示
+- 首页集成、自动重连
 
 ### 🎮 娱乐功能
-- 🎰 **幸运抽奖** - 试试手气，看能否抽到幸运数字
-- 🏆 **成就系统** - 收集 5 个成就徽章
-- 💰 **余额模拟** - 假装查询 ETH 和 USD 余额
-- 📜 **交易记录** - 自动生成假的交易历史
-- 🗑️ **一键清空** - 删除所有数据重新开始
-- 🏷️ **标签管理** - 给钱包分类标记
+- 🎰 幸运抽奖 | 🏆 成就系统
+- 💰 余额模拟 | 📜 交易记录
+- 🏷️ 标签管理 | 🗑️ 一键清空
 
 ---
 
 ## 🛠️ 技术栈
 
-- **后端框架**：Axum (Rust)
+- **后端**：Rust + Axum + Tokio
 - **前端**：HTML5 + CSS3 + JavaScript
 - **数据库**：MySQL
 - **加密**：AES-GCM, secp256k1, SHA3
-- **运行时**：Tokio
 - **WebSocket**：tokio-tungstenite (native-tls)
-- **数据源**：CryptoCompare WebSocket API
+- **数据源**：CryptoCompare API
+
+---
+
+## 📚 文档导航
+
+### 🎯 核心文档（必读）
+1. **[快速开始指南](QUICK_START.md)** - 5 分钟上手教程
+2. **[代码学习指南](CODE_EXPLANATION.md)** - 详细代码注释和原理解析
+3. **[本文档](README.md)** - 项目概览和功能介绍
+
+### 💡 学习建议
+- **新手**：先看 [QUICK_START.md](QUICK_START.md) → 运行项目体验功能
+- **学习代码**：看 [CODE_EXPLANATION.md](CODE_EXPLANATION.md) → 理解实现原理
+- **查阅功能**：继续阅读本文档 → 了解 API 和使用方法
 
 ---
 
 ## 📦 快速开始
 
-### 1. 环境准备
+### 方式一：使用启动脚本（推荐）
 ```bash
-# 需要安装
-- Rust (最新稳定版)
-- MySQL 数据库
-- Git
+# Windows
+start.bat
+
+# Linux/Mac
+chmod +x start.sh && ./start.sh
 ```
 
-### 2. 配置环境变量
-编辑 `.env` 文件：
-```env
-DATABASE_URL=mysql://用户名：密码@主机：端口/数据库名
-ENCRYPTION_KEY=12345678901234567890123456789012
-ENVIRONMENT=dev
-```
-
-### 3. 创建数据库表
-```sql
-CREATE DATABASE IF NOT EXISTS your_database;
-USE your_database;
-
-CREATE TABLE wallets (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    address VARCHAR(255) NOT NULL UNIQUE,
-    mnemonic_enc TEXT NOT NULL,
-    private_key_enc TEXT NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-```
-
-### 4. 启动服务
+### 方式二：手动启动
 ```bash
 dx serve
 # 或
 cargo run
 ```
 
-### 5. 访问页面
-打开浏览器：**http://127.0.0.1:3000**
+### 访问页面
+http://127.0.0.1:3000
+
+> 📖 **详细教程**：查看 [QUICK_START.md](QUICK_START.md)
 
 ---
 
-## 🎯 API 端点总览
+## 🎯 API 端点精选
 
 ### 基础功能
 | 方法 | 路径 | 描述 |
 |------|------|------|
 | GET | `/` | Web 主界面（含实时价格） |
-| GET | `/ws` | WebSocket 端点（实时价格推送） |
-| GET | `/health` | 健康检查 |
-| GET | `/stats` | 统计信息 |
 | POST | `/wallets` | 创建钱包 |
-| GET | `/wallets` | 钱包列表（前 10 个） |
-| GET | `/wallets/{address}` | 钱包详情 |
+| GET | `/wallets` | 钱包列表 |
 | DELETE | `/wallets/{address}` | 删除钱包 |
-| POST | `/wallets/batch` | 批量创建 |
-| GET | `/wallets/search?q=` | 搜索钱包 |
-| GET | `/wallets/export` | 导出钱包 |
-| POST | `/wallets/import` | 导入助记词 |
-| POST | `/wallets/batch-delete` | 批量删除 |
 
-### 💰 市场数据
+### 市场数据
 | 方法 | 路径 | 描述 |
 |------|------|------|
-| GET | `/market/prices` | 获取加密货币价格 |
-| GET | `/market/trends` | 获取市场趋势 |
-| POST | `/alerts/price` | 设置价格提醒 |
-| GET | `/portfolio/{address}` | 计算资产组合 | |
+| GET | `/market/prices` | 获取价格 |
+| GET | `/portfolio/{address}` | 资产组合 |
 
-### 🆕 娱乐功能
+### 娱乐功能
 | 方法 | 路径 | 描述 |
 |------|------|------|
-| POST | `/wallets/{address}/tags` | 添加标签 |
-| GET | `/wallets/{address}/tags` | 获取标签 |
-| GET | `/wallets/{address}/balance` | 模拟余额 |
-| GET | `/wallets/{address}/transactions` | 交易记录 |
 | GET | `/lucky-draw` | 幸运抽奖 |
 | GET | `/achievements` | 成就系统 |
-| DELETE | `/admin/clear-all` | 一键清空 |
+
+> 📋 **完整 API 列表**：见下文 "API 总览" 章节
 
 ---
 
