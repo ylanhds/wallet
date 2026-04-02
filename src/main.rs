@@ -269,7 +269,7 @@ struct UpdateLabelRequest {
     label: Option<String>,
 }
 
-// 🆕 新增：标签相关结构体
+//  新增：标签相关结构体
 #[derive(Serialize, Deserialize)]
 struct TagRequest {
     tags: Vec<String>,
@@ -282,7 +282,7 @@ struct TaggedWallet {
     label: Option<String>,
 }
 
-// 🆕 新增：余额模拟结构体
+//  新增：余额模拟结构体
 #[derive(Serialize, Deserialize)]
 struct BalanceResponse {
     address: String,
@@ -291,7 +291,7 @@ struct BalanceResponse {
     last_updated: String,
 }
 
-// 🆕 新增：交易记录结构体
+//  新增：交易记录结构体
 #[derive(Serialize, Deserialize)]
 struct TransactionRecord {
     hash: String,
@@ -303,7 +303,7 @@ struct TransactionRecord {
     status: String,
 }
 
-// 🆕 新增：成就系统结构体
+//  新增：成就系统结构体
 #[derive(Serialize, Deserialize)]
 struct Achievement {
     id: String,
@@ -313,7 +313,7 @@ struct Achievement {
     unlocked_at: Option<String>,
 }
 
-// 🆕 新增：幸运抽奖结构体
+//  新增：幸运抽奖结构体
 #[derive(Serialize, Deserialize)]
 struct LuckyDrawResult {
     address: String,
@@ -323,7 +323,7 @@ struct LuckyDrawResult {
     message: String,
 }
 
-// 🆕 新增：钱包主题/颜色结构体
+//  新增：钱包主题/颜色结构体
 #[derive(Serialize, Deserialize)]
 struct WalletTheme {
     address: String,
@@ -333,7 +333,7 @@ struct WalletTheme {
     personality: String,
 }
 
-// 🆕 新增：运势系统结构体
+//  新增：运势系统结构体
 #[derive(Serialize, Deserialize)]
 struct FortuneResponse {
     address: String,
@@ -346,7 +346,7 @@ struct FortuneResponse {
     lucky_color: String,
 }
 
-// 🆕 新增：多链地址结构体
+//  新增：多链地址结构体
 #[derive(Serialize, Deserialize)]
 struct MultiChainWallet {
     ethereum: String,
@@ -356,21 +356,21 @@ struct MultiChainWallet {
     mnemonic: Option<String>,
 }
 
-// 🆕 新增：密钥推导请求
+//  新增：密钥推导请求
 #[derive(Deserialize)]
 struct DeriveKeyRequest {
     mnemonic: String,
     path: Option<String>,  // BIP44 路径，默认 m/44'/60'/0'/0/0
 }
 
-// 🆕 新增：签名请求
+//  新增：签名请求
 #[derive(Deserialize)]
 struct SignMessageRequest {
     private_key: String,
     message: String,
 }
 
-// 🆕 新增：转账模拟请求
+//  新增：转账模拟请求
 #[derive(Deserialize)]
 struct TransferRequest {
     from: String,
@@ -379,7 +379,7 @@ struct TransferRequest {
     private_key: String,
 }
 
-// 🆕 新增：价格相关结构体
+//  新增：价格相关结构体
 #[derive(Serialize, Deserialize)]
 struct CryptoPrice {
     symbol: String,
@@ -1085,30 +1085,30 @@ async fn main() -> Result<(), anyhow::Error> {
 
     let app = Router::new()
         .route("/", get(index))
-        .route("/price-monitor", get(price_monitor_page))  // 🆕 价格监控页面
-        .route("/ws", get(ws_handler))  // 🆕 WebSocket 端点
-        .route("/health", get(health_check))  // 🆕 健康检查
-        .route("/stats", get(get_stats))  // 🆕 统计信息
-        .route("/activity", get(get_recent_activity))  // 🆕 最近活动
-        .route("/validate-address", post(validate_address))  // 🆕 地址验证
-        .route("/generate-mnemonic", get(generate_mnemonic_only))  // 🆕 生成助记词
-        .route("/address-from-key", post(address_from_private_key))  // 🆕 私钥生成地址
-        .route("/wallets/random", get(get_random_wallet))  // 🆕 随机钱包
-        .route("/wallets/batch-delete", post(batch_delete_wallets))  // 🆕 批量删除
+        .route("/price-monitor", get(price_monitor_page))  //  价格监控页面
+        .route("/ws", get(ws_handler))  //  WebSocket 端点
+        .route("/health", get(health_check))  //  健康检查
+        .route("/stats", get(get_stats))  //  统计信息
+        .route("/activity", get(get_recent_activity))  //  最近活动
+        .route("/validate-address", post(validate_address))  //  地址验证
+        .route("/generate-mnemonic", get(generate_mnemonic_only))  //  生成助记词
+        .route("/address-from-key", post(address_from_private_key))  //  私钥生成地址
+        .route("/wallets/random", get(get_random_wallet))  //  随机钱包
+        .route("/wallets/batch-delete", post(batch_delete_wallets))  //  批量删除
         .route("/wallets", post(create_wallet).get(list_wallets))
-        .route("/wallets/batch", post(batch_create_wallets))  // 🆕 批量创建
-        .route("/wallets/search", get(search_wallets))  // 🆕 搜索钱包
-        .route("/wallets/export", get(export_wallets))  // 🆕 导出钱包
-        .route("/wallets/import", post(import_wallet))  // 🆕 导入钱包
-        .route("/wallets/{address}", get(get_wallet).delete(delete_wallet))  // 🆕 删除功能
-        // 🆕🆕🆕 新增娱乐功能 🆕🆕🆕
+        .route("/wallets/batch", post(batch_create_wallets))  //  批量创建
+        .route("/wallets/search", get(search_wallets))  //  搜索钱包
+        .route("/wallets/export", get(export_wallets))  //  导出钱包
+        .route("/wallets/import", post(import_wallet))  //  导入钱包
+        .route("/wallets/{address}", get(get_wallet).delete(delete_wallet))  //  删除功能
+        //  新增娱乐功能 
         .route("/wallets/{address}/tags", post(add_wallet_tags).get(get_wallet_tags))  // 🎯 标签系统
         .route("/wallets/{address}/balance", get(simulate_balance))  // 💰 余额模拟
         .route("/wallets/{address}/transactions", get(generate_fake_transactions))  // 📜 交易记录
         .route("/lucky-draw", get(lucky_draw))  // 🎰 幸运抽奖
         .route("/achievements", get(get_achievements))  // 🏆 成就系统
         .route("/admin/clear-all", delete(clear_all_data))  // 🗑️ 一键清空
-        // 🆕 更多娱乐功能
+        //  更多娱乐功能
         .route("/wallets/{address}/theme", get(get_wallet_theme))  // 🎨 钱包主题
         .route("/wallets/{address}/fortune", get(get_fortune))  // 🔮 每日运势
         // 🔗 区块链工具功能
@@ -1143,7 +1143,7 @@ async fn main() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-// ==== 🆕 新增娱乐功能 ====
+// ====  新增娱乐功能 ====
 
 /// 🎯 给钱包添加标签
 async fn add_wallet_tags(
@@ -1455,7 +1455,7 @@ async fn clear_all_data(
     }
 }
 
-// ==== 🆕 新增娱乐功能 ====
+// ====  新增娱乐功能 ====
 
 /// 🎨 获取钱包的主题颜色
 async fn get_wallet_theme(
