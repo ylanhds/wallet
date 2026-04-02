@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户认证 - Wallet Service</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .auth-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+            width: 100%;
+            max-width: 900px;
+            min-height: 600px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .auth-panel {
+            padding: 50px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .left-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .right-panel {
+            background: white;
+        }
+
+        .logo {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 2em;
+            margin-bottom: 30px;
+            color: #333;
+        }
+
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+            margin-bottom: 40px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .switch-text {
+            text-align: center;
+            margin-top: 25px;
+            color: #666;
+        }
+
+        .switch-text a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .switch-text a:hover {
+            text-decoration: underline;
+        }
+
+        .alert {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .features {
+            margin-top: 40px;
+            text-align: left;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 0.95em;
+        }
+
+        .feature-icon {
+            width: 30px;
+            height: 30px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            font-size: 1.2em;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 768px) {
+            .auth-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .left-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <!-- 左侧展示面板 -->
+        <div class="auth-panel left-panel">
+            <div class="logo">🔐</div>
+            <h1>Wallet Service</h1>
+            <p class="subtitle">安全、便捷的多链钱包管理</p>
+            
+            <div class="features">
+                <div class="feature-item">
+                    <div class="feature-icon">✨</div>
+                    <span>创建和管理多个钱包地址</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🏷️</div>
+                    <span>为钱包添加标签和备注</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <span>实时查看资产组合价值</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">💰</div>
+                    <span>实时监控加密货币价格</span>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🔒</div>
+                    <span>AES-256-GCM 加密存储私钥</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧表单面板 -->
+        <div class="auth-panel right-panel">
+            <!-- 登录表单 -->
+            <div id="loginForm">
+                <h2>欢迎回来</h2>
+                <div id="loginAlert" class="alert"></div>
+                
+                <form onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label for="loginUsername">用户名</label>
+                        <input type="text" id="loginUsername" required placeholder="请输入用户名">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="loginPassword">密码</label>
+                        <input type="password" id="loginPassword" required placeholder="请输入密码">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">登 录</button>
+                </form>
+                
+                <div class="switch-text">
+                    还没有账号？<a onclick="showRegister()">立即注册</a>
+                </div>
+            </div>
+
+            <!-- 注册表单 -->
+            <div id="registerForm" class="hidden">
+                <h2>创建账号</h2>
+                <div id="registerAlert" class="alert"></div>
+                
+                <form onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label for="regUsername">用户名</label>
+                        <input type="text" id="regUsername" required placeholder="3-20 个字符">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regEmail">邮箱</label>
+                        <input type="email" id="regEmail" required placeholder="example@email.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="regPassword">密码</label>
+                        <input type="password" id="regPassword" required placeholder="至少 6 位字符">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">注 册</button>
+                </form>
+                
+                <div class="switch-text">
+                    已有账号？<a onclick="showLogin()">返回登录</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:3000';
+        
+        // 切换表单显示
+        function showRegister() {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('registerForm').classList.remove('hidden');
+        }
+        
+        function showLogin() {
+            document.getElementById('registerForm').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+        }
+        
+        // 显示提示信息
+        function showAlert(message, type) {
+            const alertEl = document.createElement('div');
+            alertEl.className = `alert alert-${type}`;
+            alertEl.textContent = message;
+            alertEl.style.display = 'block';
+            
+            const formId = type === 'error' ? 'loginForm' : 'registerForm';
+            const container = document.querySelector(`#${formId}`);
+            container.insertBefore(alertEl, container.firstChild);
+            
+            setTimeout(() => {
+                alertEl.remove();
+            }, 5000);
+        }
+        
+        // 处理登录
+        async function handleLogin(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 保存 token
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('refreshToken', data.refresh_token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    showAlert('登录成功！正在跳转...', 'success');
+                    
+                    // 延迟跳转到主页
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    showAlert(data.message || '登录失败', 'error');
+                }
+            } catch (error) {
+                showAlert(`登录失败：${error.message}`, 'error');
+            }
+        }
+        
+        // 处理注册
+        async function handleRegister(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('regUsername').value;
+            const email = document.getElementById('regEmail').value;
+            const password = document.getElementById('regPassword').value;
+            
+            if (password.length < 6) {
+                showAlert('密码长度至少 6 位', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 保存 token
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('refreshToken', data.refresh_token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    
+                    showAlert('注册成功！正在跳转...', 'success');
+                    
+                    // 延迟跳转到主页
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                } else {
+                    showAlert(data.message || '注册失败', 'error');
+                }
+            } catch (error) {
+                showAlert(`注册失败：${error.message}`, 'error');
+            }
+        }
+        
+        // 检查是否已登录
+        window.onload = function() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                // 已登录，直接跳转到主页
+                window.location.href = '/';
+            }
+        };
+    </script>
+</body>
+</html>
